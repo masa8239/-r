@@ -1275,11 +1275,9 @@ nav {
 </div>
 
 <script>
-// ===== GOOGLE SHEETS CSV URLs =====
-// シート名をURLに追加する形式: &sheet=シート名
-const SHEET_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTWy_y9KV-3cBzUgvdzf6Ww_kzzw5nKopwJYhiSAgbHmjNrUR7q2BM9yMYNroIu_EyxWdBFCBufsv51/pub?output=csv';
-const CPU_CSV_URL = SHEET_BASE + '&gid=0';   // 1枚目シート（CPU）
-const GPU_CSV_URL = SHEET_BASE + '&gid=1';   // 2枚目シート（GPU）※gidはスプレッドシートに合わせて調整
+// ===== GOOGLE APPS SCRIPT URLs =====
+const CPU_CSV_URL = 'https://script.google.com/macros/s/AKfycbxWHs4CEGCGVa-Z_QfMA0vMQUq_sQ8dL47POcPvJYynJIhwxgJYWdJ0XOtOLIaLNfJM/exec';
+const GPU_CSV_URL = 'https://script.google.com/macros/s/AKfycbxyrOzS96rGJPUzFdqDguRqN08dTEElLAcjiZgM5Mq0zzHkiAZbjr8-fsN5Q83HcXcj/exec';
 
 // ===== DATA（動的ロード後に格納） =====
 let cpuData = [];
@@ -1378,12 +1376,37 @@ function showLoading(tbodyId, cols) {
 async function loadSheetData() {
   showLoading('cpu-table-body', 8);
   showLoading('gpu-table-body', 8);
-  await Promise.all([
-    loadSheet(SHEET_CPU_URL, false),
-    loadSheet(SHEET_GPU_URL, true),
-  ]);
-  brenderParts();
+
+  try {
+    const cpuRes = await fetch(CPU_CSV_URL);
+    const cpuRows = await cpuRes.json();
+    cpuData = cpuRows.map(parseCpuRow).filter(r => r.name && r.score > 0).sort((a,b) => b.score - a.score);
+    maxCpuScore = Math.max(...cpuData.map(d => d.score), 1);
+    renderCpuTable();
+    updateCompare();
+  } catch(e) {
+    console.warn('CPU読み込み失敗:', e);
+    cpuData = FALLBACK_CPU;
+    maxCpuScore = Math.max(...cpuData.map(d => d.score));
+    renderCpuTable();
+  }
+
+  try {
+    const gpuRes = await fetch(GPU_CSV_URL);
+    const gpuRows = await gpuRes.json();
+    gpuData = gpuRows.map(parseGpuRow).filter(r => r.name && r.score > 0).sort((a,b) => b.score - a.score);
+    maxGpuScore = Math.max(...gpuData.map(d => d.score), 1);
+    renderGpuTable();
+    updateGpuCompare();
+  } catch(e) {
+    console.warn('GPU読み込み失敗:', e);
+    gpuData = FALLBACK_GPU;
+    maxGpuScore = Math.max(...gpuData.map(d => d.score));
+    renderGpuTable();
+  }
+
   updateHomeRanking();
+  brenderParts();
 }
 
 // ===== フォールバックデータ（読み込み失敗時） =====
