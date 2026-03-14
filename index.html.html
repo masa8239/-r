@@ -1951,25 +1951,9 @@ async function loadSheet(url, isGpu) {
     console.log(`🔍 ${isGpu?'GPU':'CPU'} 列マッピング:`, {nameCol, scoreCol, priceCol, tdpCol, vramCol});
 
     const newData = rows.map(r => {
-      const name  = String(r[nameCol] || '').trim();
-      const rawScore = r[scoreCol];
-      const rawPrice = r[priceCol];
-      const rawTdp   = r[tdpCol];
-      const score = typeof rawScore === 'number' ? rawScore : parseInt(String(rawScore||'').replace(/[^0-9]/g,'')) || 0;
-      const price = typeof rawPrice === 'number' ? rawPrice : parseInt(String(rawPrice||'').replace(/[^0-9]/g,'')) || 0;
-      const tdp   = typeof rawTdp   === 'number' ? rawTdp   : parseInt(String(rawTdp  ||'').replace(/[^0-9]/g,'')) || 0;
-      if (!name || !score) return null;
-      if (isGpu) {
-        const maker = name.includes('Radeon')||name.includes('RX')||name.includes('Arc')?'AMD':'NVIDIA';
-        const dlss  = maker==='AMD'?'FSR 3':'DLSS 3';
-        return { name, maker, score, price, vram: String(r[vramCol]||''), tdp, rt:'◎', dlss, badge:'', badgeClass:'' };
-      } else {
-        const rawCores = r[coreCol];
-        const cores = typeof rawCores === 'number' ? rawCores : parseInt(String(rawCores||'').replace(/[^0-9]/g,'')) || 0;
-        const maker = name.includes('Ryzen')||name.includes('AMD')?'AMD':name.includes('Apple')?'Apple':'Intel';
-        return { name, maker, score, single:0, price, tdp, cores, socket:String(r[socketCol]||''), gen:'', badge:'', badgeClass:'' };
-      }
-    }).filter(Boolean).sort((a,b) => b.score - a.score);
+      if (isGpu) return parseGpuRow(r);
+      else return parseCpuRow(r);
+    }).filter(r => r && r.name && r.score > 0).sort((a,b) => b.score - a.score);
 
     if (!newData.length) throw new Error('no valid rows');
 
