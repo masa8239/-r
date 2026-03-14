@@ -1312,29 +1312,22 @@ function parseCSV(text) {
 // 想定カラム: CPU名, PassMarkスコア, コア数, スレッド数, TDP, クロック, キャッシュ, 価格(円), コスパ指数
 function parseCpuRow(row) {
   const name = row['CPU名'] || row['cpu名'] || Object.values(row)[0] || '';
-  const score = parseInt((row['PassMarkスコア'] || row['スコア'] || '0').replace(/,/g,'')) || 0;
-  const cores = parseInt(row['コア数']) || 0;
-  const threads = parseInt(row['スレッド数']) || 0;
-  const tdpStr = (row['TDP'] || '').replace('W','');
-  const tdp = parseInt(tdpStr) || 0;
-  const clock = row['クロック'] || '';
-  const cache = row['キャッシュ'] || '';
-  const priceStr = (row['価格(円)'] || row['価格'] || '').replace(/,/g,'');
-  const price = parseInt(priceStr) || 0;
-  const cospa = parseFloat(row['コスパ指数']) || 0;
+  const toNum = (v) => typeof v === 'number' ? v : parseInt(String(v||'').replace(/[^0-9.]/g,'')) || 0;
+  const score   = toNum(row['PassMarkスコア'] || row['スコア']);
+  const cores   = toNum(row['コア数']);
+  const threads = toNum(row['スレッド数']);
+  const tdp     = toNum(row['TDP']);
+  const clock   = String(row['クロック'] || '');
+  const cache   = String(row['キャッシュ'] || '');
+  const price   = toNum(row['価格(円)'] || row['価格']);
+  const cospa   = typeof row['コスパ指数'] === 'number' ? row['コスパ指数'] : parseFloat(String(row['コスパ指数']||'')) || 0;
 
-  // メーカー判定
   const maker = name.toLowerCase().includes('ryzen') || name.toLowerCase().includes('amd') ? 'AMD'
     : name.toLowerCase().includes('core') || name.toLowerCase().includes('intel') ? 'Intel'
     : name.toLowerCase().includes('apple') ? 'Apple' : 'Other';
 
-  // ソケット判定
-  const socket = name.includes('9') && maker==='AMD' ? 'AM5'
-    : name.includes('7') && maker==='AMD' ? 'AM5'
-    : name.includes('5') && maker==='AMD' ? 'AM5'
-    : maker==='Intel' ? 'LGA1700' : '';
+  const socket = maker==='AMD' ? 'AM5' : maker==='Intel' ? 'LGA1700' : '';
 
-  // バッジ自動付与
   let badge = '', badgeClass = '';
   if (cospa >= 1.2) { badge = 'コスパ最強'; badgeClass = 'badge-green'; }
   else if (cospa >= 0.9) { badge = 'コスパ◎'; badgeClass = 'badge-green'; }
@@ -1347,21 +1340,20 @@ function parseCpuRow(row) {
 // 想定カラム: GPU名, 3DMark Time Spy, TDP, VRAM, 帯域幅, コスパ, 価格(円)
 function parseGpuRow(row) {
   const name = row['GPU名'] || row['gpu名'] || Object.values(row)[0] || '';
-  const score = parseInt((row['3DMark Time Spy'] || row['スコア'] || '0').replace(/,/g,'')) || 0;
-  const tdpStr = (row['TDP'] || '').replace('W','');
-  const tdp = parseInt(tdpStr) || 0;
-  const vram = row['VRAM'] || '';
-  const bw = row['帯域幅'] || '';
-  const priceStr = (row['価格(円)'] || row['価格'] || '').replace(/,/g,'');
-  const price = parseInt(priceStr) || 0;
-  const cospa = parseFloat(row['コスパ']) || 0;
+  const toNum = (v) => typeof v === 'number' ? v : parseInt(String(v||'').replace(/[^0-9.]/g,'')) || 0;
+  const score = toNum(row['3DMark Time Spy'] || row['スコア']);
+  const tdp   = toNum(row['TDP']);
+  const price = toNum(row['価格(円)'] || row['価格']);
+  const cospa = typeof row['コスパ'] === 'number' ? row['コスパ'] : parseFloat(String(row['コスパ']||'')) || 0;
+  const vram  = String(row['VRAM'] || '');
+  const bw    = String(row['帯域幅'] || '');
 
   const maker = name.includes('RTX') || name.includes('GTX') || name.includes('GeForce') || name.includes('NVIDIA') ? 'NVIDIA'
     : name.includes('RX') || name.includes('Radeon') || name.includes('AMD') ? 'AMD'
     : name.includes('Arc') || name.includes('Intel') ? 'Intel' : 'Other';
 
   const dlss = maker === 'NVIDIA' ? 'DLSS 3' : maker === 'AMD' ? 'FSR 3' : '-';
-  const rt = maker === 'NVIDIA' ? '◎' : maker === 'AMD' ? '○' : '△';
+  const rt   = maker === 'NVIDIA' ? '◎' : maker === 'AMD' ? '○' : '△';
 
   let badge = '', badgeClass = '';
   if (cospa >= 0.25) { badge = 'コスパ最強'; badgeClass = 'badge-green'; }
