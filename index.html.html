@@ -1378,38 +1378,11 @@ function showLoading(tbodyId, cols) {
 async function loadSheetData() {
   showLoading('cpu-table-body', 8);
   showLoading('gpu-table-body', 8);
-
-  try {
-    // CPU読み込み
-    const cpuRes = await fetch(CPU_CSV_URL);
-    const cpuText = await cpuRes.text();
-    const cpuRows = parseCSV(cpuText);
-    cpuData = cpuRows.map(parseCpuRow).filter(r => r.name && r.score > 0).sort((a,b) => b.score - a.score);
-    maxCpuScore = Math.max(...cpuData.map(d => d.score), 1);
-  } catch(e) {
-    console.warn('CPU読み込み失敗:', e);
-    cpuData = FALLBACK_CPU;
-    maxCpuScore = Math.max(...cpuData.map(d => d.score));
-  }
-
-  try {
-    // GPU読み込み
-    const gpuRes = await fetch(GPU_CSV_URL);
-    const gpuText = await gpuRes.text();
-    const gpuRows = parseCSV(gpuText);
-    gpuData = gpuRows.map(parseGpuRow).filter(r => r.name && r.score > 0).sort((a,b) => b.score - a.score);
-    maxGpuScore = Math.max(...gpuData.map(d => d.score), 1);
-  } catch(e) {
-    console.warn('GPU読み込み失敗:', e);
-    gpuData = FALLBACK_GPU;
-    maxGpuScore = Math.max(...gpuData.map(d => d.score));
-  }
-
-  // レンダリング実行
-  renderCpuTable();
-  renderGpuTable();
-  updateCompare();
-  updateGpuCompare();
+  await Promise.all([
+    loadSheet(SHEET_CPU_URL, false),
+    loadSheet(SHEET_GPU_URL, true),
+  ]);
+  brenderParts();
   updateHomeRanking();
 }
 
@@ -1464,6 +1437,12 @@ document.head.appendChild(spinStyle);
 
 function fmtPrice(p) { return `¥${p.toLocaleString()}`; }
 function rankColor(i) { return i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':''; }
+function maxClock(gen) {
+  // "4.3-5.7GHz" → "5.7GHz" / "3.7GHz" → "3.7GHz"
+  if (!gen) return '';
+  const m = gen.match(/([\d.]+)GHz\s*$/);
+  return m ? m[1]+'GHz' : gen;
+}
 
 // ===== RENDER CPU TABLE =====
 function renderCpuTable() {
@@ -1473,7 +1452,7 @@ function renderCpuTable() {
       <td><span class="rank-num ${rankColor(i)}">${i+1}</span></td>
       <td>
         <div class="chip-name">${c.name} ${c.badge ? `<span class="badge ${c.badgeClass}">${c.badge}</span>` : ''}</div>
-        <div class="chip-sub">${c.maker} · ${c.gen} · ${c.cores}コア · ${c.socket}</div>
+        <div class="chip-sub">${c.maker} · ${c.cores}コア · ${c.socket}${maxClock(c.gen) ? ' · Max '+maxClock(c.gen) : ''}</div>
       </td>
       <td>
         <div class="score-bar-wrap">
