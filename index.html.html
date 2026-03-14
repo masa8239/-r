@@ -1914,81 +1914,12 @@ function parseCSV(text) {
   }).filter(r => r[headers[0]]);
 }
 
-async function loadSheetData() {
-  await Promise.all([
-    loadSheet(SHEET_CPU_URL, false),
-    loadSheet(SHEET_GPU_URL, true),
-  ]);
-  brenderParts();
-}
-
-async function loadSheet(url, isGpu) {
-  try {
-    const res = await fetch(url, { mode: 'cors', cache: 'no-cache' });
-    if (!res.ok) throw new Error('fetch failed: ' + res.status);
-    const text = await res.text();
-    let rows;
-    try { rows = JSON.parse(text); } catch(e) { rows = parseCSV(text); }
-    if (!rows.length) throw new Error('empty');
-
-    const keys = Object.keys(rows[0]);
-    console.log(`📋 ${isGpu?'GPU':'CPU'} 列名:`, keys);
-    const col = (candidates) => keys.find(k => candidates.some(c => k === c || k.toLowerCase().includes(c.toLowerCase())));
-
-    const nameCol  = col(['GPU名','CPU名','名前','name']) || keys[0];
-    const scoreCol = col(['3DMark Time Spy','PassMarkスコア','PassMark','スコア','score']);
-    const priceCol = col(['価格(円)','価格','price']);
-    const tdpCol   = col(['TDP','tdp','消費電力']);
-    const coreCol  = col(['コア数','コア','core']);
-    const socketCol= col(['ソケット','socket']);
-    const vramCol  = col(['VRAM','vram']);
-    console.log(`🔍 ${isGpu?'GPU':'CPU'} 列マッピング:`, {nameCol, scoreCol, priceCol, tdpCol, vramCol});
-
-    const newData = rows.map(r => {
-      if (isGpu) return parseGpuRow(r);
-      else return parseCpuRow(r);
-    }).filter(r => r && r.name && r.score > 0).sort((a,b) => b.score - a.score);
-
-    if (!newData.length) throw new Error('no valid rows');
-
-    if (isGpu) {
-      gpuData.length = 0;
-      newData.forEach(d => gpuData.push(d));
-      window.maxGpuScore = Math.max(...gpuData.map(d => d.score));
-      renderGpuTable();
-      updateGpuCompare();
-      BPARTS.gpu.items = gpuData.slice(0,12).map((g,i)=>({
-        id:'bg'+(i+1), name:g.name, spec:`${g.vram} · ${g.tdp}W`,
-        price:g.price||0, score:g.score, vram:parseInt(g.vram)||8
-      }));
-    } else {
-      cpuData.length = 0;
-      newData.forEach(d => cpuData.push(d));
-      window.maxCpuScore = Math.max(...cpuData.map(d => d.score));
-      renderCpuTable();
-      updateCompare();
-      BPARTS.cpu.items = cpuData.slice(0,12).map((c,i)=>({
-        id:'bc'+(i+1), name:c.name, spec:`${c.cores}コア · ${c.tdp}W`,
-        price:c.price||0, score:c.score, socket:c.socket||'', tdp:c.tdp
-      }));
-    }
-    console.log(`✓ ${isGpu?'GPU':'CPU'} ${newData.length}件読み込み完了`);
-  } catch(e) {
-    console.warn(`${isGpu?'GPU':'CPU'} sheet load failed:`, e.message);
-  }
-}
-
 // ===== INIT =====
 renderCpuTable();
 renderGpuTable();
 updateCompare();
 updateGpuCompare();
 brenderParts();
-
-// 読み込み中表示
-document.getElementById('cpu-table-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--accent2)">⏳ スプレッドシートから読み込み中...</td></tr>';
-document.getElementById('gpu-table-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--accent2)">⏳ スプレッドシートから読み込み中...</td></tr>';
-
 loadSheetData();
 </script>
 </body>
