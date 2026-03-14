@@ -1952,16 +1952,20 @@ async function loadSheet(url, isGpu) {
 
     const newData = rows.map(r => {
       const name  = String(r[nameCol] || '').trim();
-      const score = parseInt(String(r[scoreCol]||'').replace(/[^0-9]/g,'')) || 0;
-      const price = parseInt(String(r[priceCol]||'').replace(/[^0-9]/g,'')) || 0;
-      const tdp   = parseInt(String(r[tdpCol]||'').replace(/[^0-9]/g,'')) || 0;
+      const rawScore = r[scoreCol];
+      const rawPrice = r[priceCol];
+      const rawTdp   = r[tdpCol];
+      const score = typeof rawScore === 'number' ? rawScore : parseInt(String(rawScore||'').replace(/[^0-9]/g,'')) || 0;
+      const price = typeof rawPrice === 'number' ? rawPrice : parseInt(String(rawPrice||'').replace(/[^0-9]/g,'')) || 0;
+      const tdp   = typeof rawTdp   === 'number' ? rawTdp   : parseInt(String(rawTdp  ||'').replace(/[^0-9]/g,'')) || 0;
       if (!name || !score) return null;
       if (isGpu) {
         const maker = name.includes('Radeon')||name.includes('RX')||name.includes('Arc')?'AMD':'NVIDIA';
         const dlss  = maker==='AMD'?'FSR 3':'DLSS 3';
         return { name, maker, score, price, vram: String(r[vramCol]||''), tdp, rt:'◎', dlss, badge:'', badgeClass:'' };
       } else {
-        const cores = parseInt(String(r[coreCol]||'').replace(/[^0-9]/g,'')) || 0;
+        const rawCores = r[coreCol];
+        const cores = typeof rawCores === 'number' ? rawCores : parseInt(String(rawCores||'').replace(/[^0-9]/g,'')) || 0;
         const maker = name.includes('Ryzen')||name.includes('AMD')?'AMD':name.includes('Apple')?'Apple':'Intel';
         return { name, maker, score, single:0, price, tdp, cores, socket:String(r[socketCol]||''), gen:'', badge:'', badgeClass:'' };
       }
